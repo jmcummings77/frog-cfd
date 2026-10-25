@@ -1,5 +1,5 @@
 import { initViewer } from "./viewer.js";
-import { dragBars, convergence, dragSplit } from "./charts.js";
+import { mount, dragBars, convergence, dragSplit, stability, neutralPoints } from "./charts.js";
 import { initRace } from "./race.js";
 
 const results = await fetch("data/results.json").then((r) => r.json());
@@ -28,9 +28,14 @@ document.querySelectorAll("[data-calc]").forEach((n) => {
   if (f) n.textContent = f();
 });
 
-dragBars(document.getElementById("chart-drag"), results.cases);
-dragSplit(document.getElementById("chart-split"), results.cases);
-convergence(document.getElementById("chart-conv"), { ...results.cases, avg_iters: results.avg_iters });
+const byId = (id) => document.getElementById(id);
+mount(byId("chart-drag"), (h) => dragBars(h, results.cases));
+mount(byId("chart-split"), (h) => dragSplit(h, results.cases));
+mount(byId("chart-conv"), (h) => convergence(h, { ...results.cases, avg_iters: results.avg_iters }));
+if (results.stability) {
+  mount(byId("chart-stab"), (h) => stability(h, results.stability));
+  mount(byId("chart-np"), (h) => neutralPoints(h, results.stability, props.length * 1000));
+}
 initRace(document.getElementById("race"), { results, props });
 initViewer(document.getElementById("viewer"), { results }).catch((e) => {
   document.querySelector("#viewer .hint").textContent = "3D view unavailable: " + e.message;

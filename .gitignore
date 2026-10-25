@@ -16,3 +16,9 @@ cfd/run_*.log
 
 # Local tooling
 .claude/
+
+# 5-degree cases start from mapped 0-degree fields (large); prepare_restart.sh rebuilds them
+cfd/*_p5/0/
+cfd/*_y5/0/
+# Superseded by the interactive convergence chart
+cfd/convergence.png

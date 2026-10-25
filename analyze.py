@@ -87,8 +87,13 @@ def main(cases):
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(os.path.join(CFD, "convergence.png"), dpi=110)
-    json.dump([{k: v for k, v in r.items() if k != "hist"} for r in res],
-              open(os.path.join(CFD, "summary.json"), "w"), indent=2)
+    summ_path = os.path.join(CFD, "summary.json")
+    summ = {}
+    if os.path.exists(summ_path):  # merge with cases analysed in earlier calls
+        old = json.load(open(summ_path))
+        summ = {r["case"]: r for r in (old if isinstance(old, list) else old.values())}
+    summ.update({r["case"]: {k: v for k, v in r.items() if k != "hist"} for r in res})
+    json.dump([summ[c] for c in sorted(summ)], open(summ_path, "w"), indent=2)
 
     # Page data: coefficients plus a thinned Cd history.
     web = {"avg_iters": AVG, "U": U0, "Re": U0 * L / 1.5e-5, "props": props, "cases": {}}

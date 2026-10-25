@@ -22,14 +22,14 @@
 <div class="wide">
   <nav class="toc">
     <a href="#answer">Answer</a><a href="#frog">The frog</a><a href="#method">Method</a><a href="#drag">Drag</a>
-    <a href="#flow">Flow</a><a href="#pressure">Pressure</a><a href="#race-sec">The drop</a>
+    <a href="#flow">Flow</a><a href="#pressure">Pressure</a><a href="#stability">Stability</a><a href="#race-sec">The drop</a>
     <a href="#limits">Caveats</a><a href="#repro">Reproduce</a>
     <button class="btn theme-toggle" type="button" aria-label="Toggle light/dark theme">◐</button>
   </nav>
   <header class="hero">
     <div class="kicker">Computational fluid dynamics · <i>Pseudacris regilla</i></div>
     <h1>Does a Pacific treefrog fly faster forwards or backwards?</h1>
-    <p class="lede">I built a 3D model of a tucked 40&nbsp;mm Pacific treefrog and ran it through a RANS wind tunnel in OpenFOAM, snout first and rear first. This page reports the drag, the wakes, the surface pressures.</p>
+    <p class="lede">I built a 3D model of a tucked 40&nbsp;mm Pacific treefrog and ran it through a RANS wind tunnel in OpenFOAM, snout first and rear first. This page reports the drag, the wakes, the surface pressures, and whether the frog would stay pointed the way it was thrown.</p>
   </header>
 
   <div class="viewer" id="viewer">
@@ -71,7 +71,7 @@
       <p><b>A tucked Pacific treefrog has <span data-calc="cd_diff_pct"></span>% less drag flying rear first, so it would go about <span data-calc="speed_diff_pct"></span>% faster backwards.</b></p>
       <p>The folded legs make the back of the frog its widest, bluntest part, and the head narrows to a short snout. Rear first, that's the shape of a teardrop: blunt end leading, tapered end trailing. Snout first, the frog drags a flat, wide back end through the air, and that's what costs it.</p>
     </div>
-    <p class="note">This holds for a frog holding its tuck. A leaping frog with its legs stretched out behind it is a different shape, and that posture isn't simulated here.</p>
+    <p class="note">That's for a frog that holds its attitude. It wouldn't for long: the <a href="#stability">stability runs</a> show a tucked frog is unstable either way round and would start tumbling within a metre or two.</p>
   </section>
 
   <section id="frog">
@@ -99,6 +99,7 @@
       <li><b>Mesh:</b> <code>snappyHexMesh</code>, about 950k cells. Cells are 0.25&nbsp;mm on the frog skin, with 3 prism layers (the first about 0.08&nbsp;mm thick), 1&nbsp;mm near the body and 2&nbsp;mm through the wake box. Max non-orthogonality is 63°.</li>
       <li><b>Boundaries:</b> fixed-velocity inlet with 0.5% turbulence intensity, zero-pressure outlet, free-stream sides, and a no-slip frog with Spalding wall functions (valid at any y<sup>+</sup>).</li>
       <li><b>Forwards vs backwards:</b> the same frog rotated 180°, meshed separately with identical settings (951,467 vs 951,586 cells).</li>
+      <li><b>Stability:</b> each orientation re-run with the airflow tilted 5° in pitch and 5° in yaw (700 iterations, restarted from the converged 0° solution, averaged over the last 300). The change in moment about the centre of mass shows whether the frog swings back into the wind or tips over.</li>
       <li><b>Convergence:</b> forces averaged over the final iterations. The ± values are the standard deviation over that window, a measure of the residual unsteadiness of the separated wake.</li>
     </ul>
   </section>
@@ -152,9 +153,40 @@
     </div>
   </section>
 
+  <section id="stability">
+    <h2>Would it stay pointed that way?</h2>
+    <p>Speed only matters if the frog keeps pointing the way it was launched. To test that, each orientation was tilted 5° nose-up (pitch) and 5° sideways (yaw). The question is whether the change in aerodynamic moment about the centre of mass pushes the leading end back into the wind, or further away.</p>
+    <div class="verdict">
+      <p><b>Neither direction is stable.</b> In all four cases a small tilt makes the frog tilt further. Snout first or rear first, a tucked frog would start to tumble almost as soon as it left the branch.</p>
+    </div>
+    <p>The reason is where the extra force acts. Tilt the frog and the air pushes on it sideways, and in every case that push is centred 6–12&nbsp;mm <em>ahead</em> of the centre of mass. A push ahead of the balance point levers the leading end further off course. It's the same reason a dart needs its flights at the back and a rocket needs fins: a smooth body with nothing sticking out behind its centre of mass turns broadside to the flow. A tucked frog has no fins.</p>
+    <div class="chart" id="chart-stab">
+      <div class="title">Static stability: moment change per degree of disturbance</div>
+      <div class="subtitle">From the 0° and 5° runs; moments about the centre of mass. Positive = turns the leading end back into the wind.</div>
+      <div class="legend-row"><span><span class="swatch" style="background:var(--series-1)"></span>Forwards</span><span><span class="swatch" style="background:var(--series-2)"></span>Backwards</span></div>
+    </div>
+    <div class="chart" id="chart-np">
+      <div class="title">Where the disturbance force acts</div>
+      <div class="subtitle">Neutral points along the body, leading end on the left. Stable only if the marker sits to the right of (behind) the centre of mass.</div>
+    </div>
+    <p>The two orientations are unstable in different ways. <b>Snout first</b> is the less unstable of the two in pitch: its neutral point sits 6&nbsp;mm ahead of the centre of mass, against 12&nbsp;mm rear first. <b>Rear first</b> is the less unstable in yaw (8 vs 10&nbsp;mm). To make either direction stable, the centre of mass would have to move that far toward the leading end, a sixth to over a quarter of the body length.</p>
+    <p>The real centre of mass probably sits a little behind the volume centroid used here, with air-filled lungs up front and heavy thigh muscle at the back. That nudges things slightly in favour of rear first and against snout first, but nowhere near 10&nbsp;mm.</p>
+    <h3>How fast does it tip over?</h3>
+    <p>The tilt grows exponentially. Using the frog's moment of inertia (from the mesh, at 4&nbsp;g), the time for a wobble to grow by a factor of <i>e</i> is:</p>
+    <div class="table-scroll"><table>
+      <tr><th>Case</th><th class="num">Neutral point vs CG</th><th class="num">% of length</th><th class="num">e-fold @ 10 m/s</th><th class="num">e-fold @ terminal</th><th class="num">Distance for 10× growth</th></tr>
+      <tr><td>Forwards · pitch</td><td class="num">6.3 mm ahead</td><td class="num">16%</td><td class="num">38 ms</td><td class="num">13 ms</td><td class="num">0.9 m</td></tr>
+      <tr><td>Forwards · yaw</td><td class="num">10.2 mm ahead</td><td class="num">25%</td><td class="num">65 ms</td><td class="num">23 ms</td><td class="num">1.5 m</td></tr>
+      <tr><td>Backwards · pitch</td><td class="num">11.6 mm ahead</td><td class="num">29%</td><td class="num">31 ms</td><td class="num">10 ms</td><td class="num">0.7 m</td></tr>
+      <tr><td>Backwards · yaw</td><td class="num">7.8 mm ahead</td><td class="num">19%</td><td class="num">72 ms</td><td class="num">23 ms</td><td class="num">1.6 m</td></tr>
+    </table></div>
+    <p>At terminal speed, a 1° wobble becomes 10° within one or two metres of travel. A real tucked frog wouldn't hold either attitude long enough to reach its top speed that way. It would tumble, and a tumbling frog spends much of its time broadside, with more frontal area and more drag than either clean orientation.</p>
+    <p class="note">What would stabilise it is something behind the centre of mass to act as flights. A leaping frog trailing its extended hind legs is exactly that, which is a good reason to think a jumping frog flies snout first. That posture isn't simulated here.</p>
+  </section>
+
   <section id="race-sec">
     <h2>The drop test</h2>
-    <p>Feed the CFD drag coefficients into Newton's second law and drop two 4&nbsp;g frogs from a 40&nbsp;m branch, one snout-down and one rear-down. Each is assumed to hold its attitude, and the falls use v(t) = v<sub>t</sub>·tanh(g t / v<sub>t</sub>).</p>
+    <p>Feed the CFD drag coefficients into Newton's second law and drop two 4&nbsp;g frogs from a 40&nbsp;m branch, one snout-down and one rear-down. Each is made to hold its attitude, which a real frog <a href="#stability">wouldn't</a>, and the falls use v(t) = v<sub>t</sub>·tanh(g t / v<sub>t</sub>).</p>
     <div class="race" id="race">
       <div class="ui-row">
         <button class="btn" data-play type="button">Drop the frogs</button>
@@ -176,7 +208,7 @@
       <li><b>Turbulence model.</b> At Re ≈ 27,000 a real boundary layer is mostly laminar, and k-ω SST treats it as turbulent throughout. Laminar flow separates earlier, which would likely raise both drag coefficients. Absolute values are therefore uncertain. The ranking comes from gross shape and wake size, so it's more trustworthy than the exact numbers. A transition model or LES would tighten them.</li>
       <li><b>Steady solver, unsteady wake.</b> Separated wakes shed vortices. The steady solution leaves about ±1% wobble in C<sub>d</sub>, far smaller than the 16% gap.</li>
       <li><b>One mesh, one speed.</b> There's no grid-refinement study (950k cells, 0.25&nbsp;mm at the skin), and only 10&nbsp;m/s was simulated. Terminal velocity (Re ≈ 80,000) is still subcritical, so C<sub>d</sub> should change little, but that's extrapolated.</li>
-      <li><b>Orientation is held fixed.</b> The simulations don't say whether a frog launched either way would stay pointed that way or tumble.</li>
+      <li><b>Stability is static and small-angle.</b> One 5° point per axis gives the initial tendency, not the full tumbling motion. It also depends on where the centre of mass really is, which is taken here as the volume centroid.</li>
     </ul>
   </section>
 
@@ -189,9 +221,12 @@ python make_cases.py --mesh-only     # mesh dictionaries for both orientations
 ./docker_of.sh ./run_mesh.sh cfd/mesh_backward
 python make_cases.py fwd_a0 bwd_a0
 ./docker_of.sh ./run_solve.sh cfd/fwd_a0 cfd/bwd_a0
+./prepare_restart.sh                 # 5° pitch/yaw cases from the 0° solutions
+./docker_of.sh ./run_restart.sh cfd/fwd_p5 cfd/bwd_p5 cfd/fwd_y5 cfd/bwd_y5
 python post_dicts.py fwd_a0 bwd_a0
 ./docker_of.sh 'for c in fwd_a0 bwd_a0; do postProcess -case cfd/$c -dict system/postSample -latestTime; done'
 python analyze.py fwd_a0 bwd_a0
+python drag_split.py && python stability.py
 python make_figures.py && python export_web.py</code></pre>
     <p class="note">On an Apple M1 (8 MPI ranks in Docker) each 0° case takes about 45 minutes.</p>
   </section>
