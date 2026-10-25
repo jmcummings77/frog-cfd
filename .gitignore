@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+
+# OpenFOAM heavy outputs (regenerate with the run scripts)
+cfd/**/processor*/
+cfd/**/polyMesh/
+cfd/*/[1-9]*/
+cfd/**/*.foam
+cfd/mesh_*/constant/triSurface/
+cfd/*/system/gridPoints
+cfd/*/postProcessing/grid/
+cfd/run_*.log
+
+.DS_Store
+
+# Local tooling
+.claude/

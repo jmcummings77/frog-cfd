@@ -1,0 +1,54 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2412                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : _45e7c4a0-20241224 OPENFOAM=2412 version=2412
+Arch   : "LSB;label=32;scalar=64"
+Exec   : postProcess -case cfd/bwd_a0 -dict system/postSample -fields (U p) -latestTime
+Date   : Oct 25 2026
+Time   : 12:18:30
+Host   : 1dcb65e5a018
+PID    : 470
+I/O    : uncollated
+Case   : /work/cfd/bwd_a0
+nProcs : 1
+trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 5, maxFileModificationPolls 20)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 1500
+
+Sampled surface:
+    side -> raw
+        sampledCuttingPlane: side : plane:(0 1 0) (0 0 0) offsets:(0)
+    top -> raw
+        sampledCuttingPlane: top : plane:(0 0 1) (0 0 0) offsets:(0)
+
+Sampled surface:
+    frog -> raw
+        sampledPatch: frog : patches:(frog)
+
+--> FOAM Warning : 
+    From void Foam::cloudSet::calcSamples(Foam::DynamicList<Foam::Vector<double> >&, Foam::DynamicList<int>&, Foam::DynamicList<int>&, Foam::DynamicList<int>&, Foam::DynamicList<double>&) const
+    in file sampledSet/cloud/cloudSet.C at line 128
+    For sample set box did not found 1535 points out of 144771
+Print missing points by setting the debug flag for cloud
+Sampled set:
+    box -> raw
+
+Time = 1500
+
+Reading fields:
+    volScalarField: p
+    volVectorField: U
+
+Executing functionObjects
+
+End
+

@@ -1,0 +1,16 @@
+FoamFile { version 2.0; format ascii; class dictionary; object slices; }
+slices
+{
+    type surfaces;
+    libs (sampling);
+    surfaceFormat raw;
+    fields (U p);
+    interpolationScheme cellPoint;
+    surfaces
+    {
+        side { type cuttingPlane; point (0 0 0); normal (0 1 0); interpolate true;
+               bounds (-0.04 -1 -0.035) (0.14 1 0.035); }
+        top  { type cuttingPlane; point (0 0 0); normal (0 0 1); interpolate true;
+               bounds (-0.04 -0.035 -1) (0.14 0.035 1); }
+    }
+}

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frog Flight CFD</title>
+<meta name="description" content="Would a Pacific treefrog fly faster forwards or backwards? A 3D OpenFOAM study of a tucked Pseudacris regilla.">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="wide">
+  <nav class="toc">
+    <a href="#answer">Answer</a><a href="#frog">The frog</a><a href="#method">Method</a><a href="#drag">Drag</a>
+    <a href="#flow">Flow</a><a href="#pressure">Pressure</a><a href="#race-sec">The drop</a>
+    <a href="#limits">Caveats</a><a href="#repro">Reproduce</a>
+    <button class="btn theme-toggle" type="button" aria-label="Toggle light/dark theme">◐</button>
+  </nav>
+  <header class="hero">
+    <div class="kicker">Computational fluid dynamics · <i>Pseudacris regilla</i></div>
+    <h1>Does a Pacific treefrog fly faster forwards or backwards?</h1>
+    <p class="lede">I built a 3D model of a tucked 40&nbsp;mm Pacific treefrog and ran it through a RANS wind tunnel in OpenFOAM, snout first and rear first. This page reports the drag, the wakes, the surface pressures.</p>
+  </header>
+
+  <div class="viewer" id="viewer">
+    <canvas aria-label="Interactive 3D frog with airflow particles"></canvas>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Orientation">
+        <button data-orient="fwd" aria-pressed="true">Forwards</button>
+        <button data-orient="bwd" aria-pressed="false">Backwards</button>
+      </div>
+      <div class="seg" role="group" aria-label="Surface colour">
+        <button data-color="cp" aria-pressed="true">Pressure</button>
+        <button data-color="frog" aria-pressed="false">Frog</button>
+      </div>
+      <div class="seg" role="group" aria-label="Airflow">
+        <button data-flow="on" aria-pressed="true">Airflow</button>
+        <button data-flow="off" aria-pressed="false">Hide</button>
+      </div>
+    </div>
+    <div class="readout"></div>
+    <div class="legend">
+      Surface pressure coefficient C<sub>p</sub>
+      <div class="bar" style="background:linear-gradient(90deg,#184f95,#5f9fea,#e8e7e2,#ec8383,#b32b2b)"></div>
+      <div class="ends"><span>−1 suction</span><span>0</span><span>+1 stagnation</span></div>
+    </div>
+    <div class="hint">Drag to orbit · click, then scroll to zoom · particles run 250× slow-motion</div>
+  </div>
+</div>
+
+<main class="wrap">
+  <section id="answer" style="margin-top:8px">
+    <h2>The answer: backwards, by about 9%</h2>
+    <div class="tiles">
+      <div class="tile"><div class="label"><span class="swatch" style="background:var(--series-1)"></span><span>Forwards C<sub>d</sub></span></div><div class="value" data-r="fwd_a0.Cd.0">–</div><div class="sub">snout first</div></div>
+      <div class="tile"><div class="label"><span class="swatch" style="background:var(--series-2)"></span><span>Backwards C<sub>d</sub></span></div><div class="value" data-r="bwd_a0.Cd.0">–</div><div class="sub"><span data-calc="cd_diff_pct"></span>% less drag</div></div>
+      <div class="tile"><div class="label"><span class="swatch" style="background:var(--series-1)"></span><span>Forwards top speed</span></div><div class="value"><span data-calc="vt_fwd"></span> m/s</div><div class="sub">≈ <span data-calc="vt_fwd_kmh"></span> km/h falling, 4 g frog</div></div>
+      <div class="tile"><div class="label"><span class="swatch" style="background:var(--series-2)"></span><span>Backwards top speed</span></div><div class="value"><span data-calc="vt_bwd"></span> m/s</div><div class="sub">≈ <span data-calc="vt_bwd_kmh"></span> km/h, <span data-calc="speed_diff_pct"></span>% faster</div></div>
+    </div>
+    <div class="verdict">
+      <p><b>A tucked Pacific treefrog has <span data-calc="cd_diff_pct"></span>% less drag flying rear first, so it would go about <span data-calc="speed_diff_pct"></span>% faster backwards.</b></p>
+      <p>The folded legs make the back of the frog its widest, bluntest part, and the head narrows to a short snout. Rear first, that's the shape of a teardrop: blunt end leading, tapered end trailing. Snout first, the frog drags a flat, wide back end through the air, and that's what costs it.</p>
+    </div>
+    <p class="note">This holds for a frog holding its tuck. A leaping frog with its legs stretched out behind it is a different shape, and that posture isn't simulated here.</p>
+  </section>
+
+  <section id="frog">
+    <h2>The frog</h2>
+    <p>No public CT scan of <i>P. regilla</i> was at hand, so the frog is parametric. It's a smooth blend of ellipsoids and capsules in the tucked, water-conserving resting posture: limbs folded tight against the body. The parts are a trunk, a wedge-shaped head narrowing to a short rounded snout, protruding eyes, thighs folded forward to the knee, shanks folded back to the heel, feet tucked beneath, and forelimbs under the chin. The surface is closed and watertight (81,920 triangles) and scaled to a 40&nbsp;mm snout–vent length, a typical adult.</p>
+    <figure>
+      <img src="img/frog_views.png" alt="Four views of the parametric tucked treefrog: top, side, front and three-quarter" loading="lazy">
+      <figcaption>The parametric tucked treefrog. The folded legs make the <em>rear half</em> the widest part of the body, and that turns out to matter.</figcaption>
+    </figure>
+    <div class="table-scroll"><table>
+      <tr><th>Quantity</th><th class="num">Value</th><th>Note</th></tr>
+      <tr><td>Length (snout–vent)</td><td class="num">40.0 mm</td><td>typical adult</td></tr>
+      <tr><td>Width × height</td><td class="num">23.5 × 12.5 mm</td><td>across the folded knees</td></tr>
+      <tr><td>Volume</td><td class="num">5.25 cm³</td><td>≈ 5.5 g at tissue density (real adults: 3–5 g)</td></tr>
+      <tr><td>Frontal area A</td><td class="num"><span data-calc="area_cm2"></span> cm²</td><td>identical in both orientations</td></tr>
+      <tr><td>Moment reference</td><td class="num">volume centroid</td><td>uniform-density centre of mass</td></tr>
+    </table></div>
+  </section>
+
+  <section id="method">
+    <h2>Method</h2>
+    <p>The frog sits in a virtual wind tunnel: 6 body lengths of air ahead, 12 behind and 4 to each side, so blockage is 0.2%. Air arrives at <b>10&nbsp;m/s</b>, a fast jump or the first metre of a fall. With a 40&nbsp;mm body that gives a Reynolds number of <b><span data-calc="re"></span></b>. In this subcritical regime drag is dominated by where the flow separates and how big the wake is.</p>
+    <ul>
+      <li><b>Solver:</b> OpenFOAM v2412 <code>simpleFoam</code>, steady incompressible RANS with the k-ω SST turbulence model. Second-order upwind convection for velocity.</li>
+      <li><b>Mesh:</b> <code>snappyHexMesh</code>, about 950k cells. Cells are 0.25&nbsp;mm on the frog skin, with 3 prism layers (the first about 0.08&nbsp;mm thick), 1&nbsp;mm near the body and 2&nbsp;mm through the wake box. Max non-orthogonality is 63°.</li>
+      <li><b>Boundaries:</b> fixed-velocity inlet with 0.5% turbulence intensity, zero-pressure outlet, free-stream sides, and a no-slip frog with Spalding wall functions (valid at any y<sup>+</sup>).</li>
+      <li><b>Forwards vs backwards:</b> the same frog rotated 180°, meshed separately with identical settings (951,467 vs 951,586 cells).</li>
+      <li><b>Convergence:</b> forces averaged over the final iterations. The ± values are the standard deviation over that window, a measure of the residual unsteadiness of the separated wake.</li>
+    </ul>
+  </section>
+
+  <section id="drag">
+    <h2>Drag</h2>
+    <p>Both orientations share the same frontal area, so their drag coefficients compare directly. Rear first is <span data-calc="cd_diff_pct"></span>% lower. In both directions about four-fifths of the drag is <em>pressure</em> drag, from how the air separates and the size of the wake. The rest is skin friction.</p>
+    <p>Skin friction is actually slightly <em>higher</em> backwards (<span data-r="bwd_a0.Cd_viscous.0"></span> vs <span data-r="fwd_a0.Cd_viscous.0"></span>), because the air stays attached over more of the body. That penalty is about a tenth the size of the pressure-drag saving: <span data-r="fwd_a0.Cd_pressure.0"></span> forwards against <span data-r="bwd_a0.Cd_pressure.0"></span> backwards.</p>
+    <div class="chart" id="chart-drag">
+      <div class="title">Drag coefficient by orientation</div>
+      <div class="subtitle">Solid: pressure (form) drag · pale: skin friction. Referenced to the shared frontal area.</div>
+    </div>
+    <div class="chart" id="chart-conv">
+      <div class="title">How the drag settled</div>
+      <div class="subtitle">C<sub>d</sub> against solver iteration; values are averaged over the shaded window</div>
+      <div class="legend-row"><span><span class="swatch" style="background:var(--series-1)"></span>Forwards</span><span><span class="swatch" style="background:var(--series-2)"></span>Backwards</span></div>
+    </div>
+  </section>
+
+  <section id="flow">
+    <h2>The flow</h2>
+    <p>The view from above shows it most clearly. <b>Snout first</b>, the frog ends in a flat back face formed by the folded heels. The air can't turn that corner, so it separates and leaves a recirculation zone (red outline) as wide as the frog. The wake behind it stays about 20&nbsp;mm wide for several body lengths.</p>
+    <p><b>Rear first</b>, the flat heel face meets the air head-on. A blunt nose costs little when its edges are rounded, and the air accelerates around them (the near-white bands). It then follows the taper of the head and closes in behind the snout. The wake is a thin line.</p>
+    <figure>
+      <img src="img/flow_top.png" alt="Top-view velocity slices for both orientations. Forwards shows a wide recirculating wake behind the flat rear; backwards shows the wake closing to a narrow line behind the snout." loading="lazy">
+      <figcaption><b>Top view, mid-height slice.</b> Colour is air speed relative to the free stream (dark = slow). Red outlines mark air flowing backwards (recirculation). Grey lines are in-plane streamlines. Air flows left → right at 10&nbsp;m/s.</figcaption>
+    </figure>
+    <p>From the side, the frog is flat-bellied and domed, so it also acts as a weak wing. Snout first it deflects its wake downward and gets a little lift (C<sub>z</sub> = <span data-r="fwd_a0.Cz.0" data-d="2"></span>). Rear first the wake kicks upward and the frog is pushed slightly down (C<sub>z</sub> = <span data-r="bwd_a0.Cz.0" data-d="2"></span>). Both forces are a quarter to a third the size of the drag.</p>
+    <figure>
+      <img src="img/flow_side.png" alt="Side-view velocity slices on the frog's centreline for both orientations" loading="lazy">
+      <figcaption><b>Side view, centreline slice.</b> Same colours as above. The asymmetric wakes show the small vertical forces.</figcaption>
+    </figure>
+  </section>
+
+  <section id="pressure">
+    <h2>Where the drag comes from</h2>
+    <p>Colouring the skin by pressure shows where the push comes from. Red is air piling up against the frog (stagnation); blue is suction where air speeds past.</p>
+    <figure>
+      <img src="img/cp_surface.png" alt="Frog surface coloured by pressure coefficient for both orientations, in top, side and three-quarter views" loading="lazy">
+      <figcaption><b>Surface pressure coefficient C<sub>p</sub>.</b> Air arrives from the left in the top and side views. Use the 3D viewer at the top of the page to orbit either one.</figcaption>
+    </figure>
+    <p>Integrating that pressure over the front and back halves of the body shows that rear-first wins at <em>both</em> ends:</p>
+    <ul>
+      <li><b>At the front:</b> snout first, the nose is small, but the body steps out sharply at the knees halfway along. That step is a second, larger face pointing into the wind (the red patches on the flanks). Rear first, the whole flat heel face is red, but the strong suction around its rounded edges pulls forward and cancels much of it.</li>
+      <li><b>At the back:</b> snout first, the wide flat base sits in the separated, low-pressure wake and is pulled backward over its whole area. Rear first, the narrowing head lets the pressure partly recover before the air leaves.</li>
+    </ul>
+    <div class="chart" id="chart-split">
+      <div class="title">Where the pressure drag comes from</div>
+      <div class="subtitle">Surface-pressure integral over the leading and trailing halves of the body (cross-checks OpenFOAM's total within 1%)</div>
+      <div class="legend-row"><span><span class="swatch" style="background:var(--series-1)"></span>Forwards</span><span><span class="swatch" style="background:var(--series-2)"></span>Backwards</span></div>
+    </div>
+  </section>
+
+  <section id="race-sec">
+    <h2>The drop test</h2>
+    <p>Feed the CFD drag coefficients into Newton's second law and drop two 4&nbsp;g frogs from a 40&nbsp;m branch, one snout-down and one rear-down. Each is assumed to hold its attitude, and the falls use v(t) = v<sub>t</sub>·tanh(g t / v<sub>t</sub>).</p>
+    <div class="race" id="race">
+      <div class="ui-row">
+        <button class="btn" data-play type="button">Drop the frogs</button>
+        <div class="seg" role="group" aria-label="Playback speed">
+          <button data-speed="1" aria-pressed="true">Real time</button>
+          <button data-speed="0.25" aria-pressed="false">¼ speed</button>
+        </div>
+      </div>
+      <canvas aria-label="Animation of two frogs falling side by side"></canvas>
+      <p class="note race-summary" style="margin:8px 0 0"></p>
+    </div>
+    <p class="note">This assumes C<sub>d</sub> holds as the frog speeds up past the 10&nbsp;m/s it was simulated at. That's reasonable in this Reynolds-number range, where the coefficient changes only slowly. Real frogs that fall spread their limbs, which roughly triples their frontal area and cuts terminal velocity to under 10&nbsp;m/s.</p>
+  </section>
+
+  <section id="limits">
+    <h2>Caveats</h2>
+    <ul>
+      <li><b>The frog is parametric, not scanned.</b> Its proportions come from typical adults, but a real tucked frog varies. The result rests on one robust feature, though: the folded legs make the rear wider and blunter than the head.</li>
+      <li><b>Turbulence model.</b> At Re ≈ 27,000 a real boundary layer is mostly laminar, and k-ω SST treats it as turbulent throughout. Laminar flow separates earlier, which would likely raise both drag coefficients. Absolute values are therefore uncertain. The ranking comes from gross shape and wake size, so it's more trustworthy than the exact numbers. A transition model or LES would tighten them.</li>
+      <li><b>Steady solver, unsteady wake.</b> Separated wakes shed vortices. The steady solution leaves about ±1% wobble in C<sub>d</sub>, far smaller than the 16% gap.</li>
+      <li><b>One mesh, one speed.</b> There's no grid-refinement study (950k cells, 0.25&nbsp;mm at the skin), and only 10&nbsp;m/s was simulated. Terminal velocity (Re ≈ 80,000) is still subcritical, so C<sub>d</sub> should change little, but that's extrapolated.</li>
+      <li><b>Orientation is held fixed.</b> The simulations don't say whether a frog launched either way would stay pointed that way or tumble.</li>
+    </ul>
+  </section>
+
+  <section id="repro">
+    <h2>Reproduce it</h2>
+    <p>Everything is in the <a href="https://github.com/jmcummings77/frog-cfd">repository</a>: the geometry generator, the case generator, the Docker run scripts, the force histories and the post-processing. With Docker and Python 3:</p>
+<pre><code>python frog_geometry.py              # frog STL + properties
+python make_cases.py --mesh-only     # mesh dictionaries for both orientations
+./docker_of.sh ./run_mesh.sh cfd/mesh_forward
+./docker_of.sh ./run_mesh.sh cfd/mesh_backward
+python make_cases.py fwd_a0 bwd_a0
+./docker_of.sh ./run_solve.sh cfd/fwd_a0 cfd/bwd_a0
+python post_dicts.py fwd_a0 bwd_a0
+./docker_of.sh 'for c in fwd_a0 bwd_a0; do postProcess -case cfd/$c -dict system/postSample -latestTime; done'
+python analyze.py fwd_a0 bwd_a0
+python make_figures.py && python export_web.py</code></pre>
+    <p class="note">On an Apple M1 (8 MPI ranks in Docker) each 0° case takes about 45 minutes.</p>
+  </section>
+
+  <footer>
+    Built with OpenFOAM v2412, three.js and matplotlib. The frog is parametric, not scanned; no frogs were thrown.
+  </footer>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
